@@ -1,7 +1,6 @@
 ---
 name: feature
 description: Orchestrate feature development with a coding agent and iterative review cycles. Use when the user wants to develop a feature end-to-end with automated coding, reviewing, and PR creation.
-disable-model-invocation: true
 user-invocable: true
 argument-hint: <task description>
 ---
