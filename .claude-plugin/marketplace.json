@@ -7,8 +7,8 @@
     {
       "name": "claude-skills",
       "source": "./plugins/claude-skills",
-      "description": "Shared Claude Code skills for orchestrating feature development and code review",
-      "version": "1.0.0"
+      "description": "Shared Claude Code skills for feature development, code review, and CI monitoring",
+      "version": "1.1.0"
     }
   ]
 }
