@@ -1,17 +1,25 @@
 ---
-name: github-tests
-description: Push changes to GitHub, monitor CI checks, fix failures caused by the PR, and retry flaky tests. Use after making code changes that need to pass CI.
+name: github-pr-green
+description: Monitor a GitHub PR's CI checks, fix failures caused by the PR, retry flaky tests, and loop until all checks are green. Use when you need to get a PR to pass CI.
 user-invocable: true
 allowed-tools: Bash, Read, Grep, Glob, Edit, Write
 ---
 
-# GitHub Tests Skill
+# Get PR Green
 
-You are responsible for pushing code changes to GitHub and ensuring ALL CI checks pass. You MUST keep polling and working until every check is green or you have conclusively proven remaining failures are unrelated to the PR. Do NOT stop early.
+You are responsible for getting a GitHub PR's CI checks to all-green. You MUST keep polling and working until every check is green or you have conclusively proven remaining failures are unrelated to the PR. Do NOT stop early.
 
-## Step 1: Push Changes
+## Step 1: Identify the PR
 
-Push the current branch to GitHub:
+Find the PR for the current branch:
+
+```bash
+gh pr view --json number,url,headRefName
+```
+
+If no PR exists, tell the user and stop — this skill requires an existing PR.
+
+Push any uncommitted changes if needed:
 
 ```bash
 git push
@@ -22,14 +30,6 @@ If there is no upstream branch yet:
 ```bash
 git push -u origin HEAD
 ```
-
-After pushing, identify the PR number:
-
-```bash
-gh pr view --json number,url --jq '.number'
-```
-
-If no PR exists, checks run on the push and can be monitored via branch name.
 
 ## Step 2: Wait For All Checks To Complete
 
@@ -47,12 +47,6 @@ After `--watch` exits (whether from a failure or all passing), get the full stat
 gh pr checks --json name,bucket,state,link 2>&1
 ```
 
-If there is no PR, use:
-
-```bash
-gh run list --branch $(git branch --show-current) --json status,conclusion,name,databaseId --limit 20
-```
-
 **CRITICAL**: If ANY check is still pending/in_progress/queued, you MUST continue waiting. Run `gh pr checks --watch` again or poll every 60 seconds. Do NOT proceed to the final report while checks are still running.
 
 ## Step 3: Handle Failures
@@ -62,7 +56,7 @@ When checks fail, you must determine if each failure is caused by the PR or unre
 ### 3a: Get the PR diff
 
 ```bash
-git diff --name-only origin/main...HEAD
+gh pr diff --name-only
 ```
 
 ### 3b: Get Failure Details
@@ -83,18 +77,18 @@ gh run view <run_id> --job <job_id> --log-failed 2>&1 | tail -200
 ### 3c: Classify Failures
 
 **PR-caused failures** (you MUST fix these):
-- Lint errors (ruff, mypy, sqlfluff) on files you changed
-- Import errors or dependency issues from your changes
-- Test failures in tests that exercise code you modified
-- Any error message referencing functions, classes, or files in your diff
+- Lint errors on files changed in the PR
+- Import errors or dependency issues from the PR's changes
+- Test failures in tests that exercise code modified by the PR
+- Any error message referencing functions, classes, or files in the PR diff
 
 **Unrelated failures** (retry these):
 - Test failures in code not touched by the PR
 - Infrastructure flakes (network timeouts, Docker pull failures, runner issues)
-- Tests that were already failing on main
+- Tests that were already failing on the base branch
 - Container build failures (almost never caused by code changes)
 
-When unsure, check if the test was passing on main:
+When unsure, check if the test was passing on the base branch:
 
 ```bash
 gh run list --branch main --workflow "<workflow_name>" --limit 3 --json conclusion,databaseId
@@ -102,15 +96,7 @@ gh run list --branch main --workflow "<workflow_name>" --limit 3 --json conclusi
 
 ### 3d: Fix PR-Caused Failures
 
-For lint errors, try auto-fixing first:
-
-```bash
-ruff check --fix .
-ruff format .
-```
-
-For mypy errors, read the failing code and fix the type issues.
-For test failures caused by your code, read the test and source, understand the failure, and fix it.
+Read the failing code, understand the failure, and fix it. For lint errors, try auto-fixing first (e.g. `ruff check --fix . && ruff format .`).
 
 After fixing, commit and push:
 
@@ -172,7 +158,7 @@ All PR-related checks are green.
 
 #### <Check Name>
 - **Error**: <brief error from logs>
-- **Why unrelated**: <explanation - e.g. "test does not touch any files in this PR's diff", "same failure on main branch">
+- **Why unrelated**: <explanation - e.g. "test does not touch any files in this PR's diff", "same failure on base branch">
 ```
 
 $ARGUMENTS
