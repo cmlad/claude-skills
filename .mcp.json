@@ -1,0 +1,50 @@
+{
+  "mcpServers": {
+    "prometheus": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "bin/prometheus_mcp.py"],
+      "env": {
+        "PROMETHEUS_URL": "https://vmselect-m2m.tooling.fal.ai/select/0/prometheus",
+        "PROMETHEUS_USERNAME": "api-user",
+        "PROMETHEUS_PASSWORD": "${PROMETHEUS_PASSWORD}"
+      }
+    },
+    "datadog": {
+      "type": "http",
+      "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp"
+    },
+    "loki": {
+      "type": "stdio",
+      "command": "${HOME}/src/loki-mcp/loki-mcp-server",
+      "args": [],
+      "env": {
+        "LOKI_URL": "https://logs-prod-006.grafana.net",
+        "LOKI_USERNAME": "${LOKI_USERNAME}",
+        "LOKI_PASSWORD": "${LOKI_PASSWORD}"
+      }
+    },
+    "linear": {
+      "type": "sse",
+      "url": "https://mcp.linear.app/sse"
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp", "--api-key", "${CONTEXT7_API_KEY}"]
+    },
+    "polarsignals": {
+      "type": "http",
+      "url": "https://api.polarsignals.com/api/mcp"
+    },
+    "grafana": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-grafana"],
+      "env": {
+        "GRAFANA_URL": "https://grafana.fal.ai",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_TOKEN}"
+      }
+    }
+  }
+}

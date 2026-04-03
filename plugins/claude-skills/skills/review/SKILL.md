@@ -79,9 +79,11 @@ Once the review loop converges, tell the user:
 - How many review cycles were completed
 - The PR URL
 
-## Step 7: Verify CI
+## Step 7: Verify CI (MANDATORY — DO NOT SKIP)
 
-Use the github-tests skill to check that the PR passes all tests. If tests fail, feed the failures back to the coding agent to fix, then re-verify.
+**You MUST run the `/claude-skills:github-pr-green` skill now.** Do NOT end the conversation, do NOT report to the user, and do NOT consider the task complete until CI is fully green. Invoke the skill and wait for it to complete. If tests fail, feed the failures back to the coding agent to fix, push, and re-run the skill until all checks pass.
+
+This step is not optional. The task is incomplete until CI passes.
 
 ---
 
@@ -92,3 +94,4 @@ Use the github-tests skill to check that the PR passes all tests. If tests fail,
 - Feed reviews to the coding agent sequentially (one at a time) so fixes don't conflict.
 - Do not let the coding agent skip reviews — it should address each one thoughtfully.
 - The review cycle should converge within 2-4 iterations in most cases. If it goes beyond 5, stop and report to the user.
+- **Do NOT end or wrap up after pushing code.** You must always complete Step 7 (CI verification) before finishing.
