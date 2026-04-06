@@ -39,6 +39,8 @@ Spawn a design agent using `codex exec` (the codex skill) with the following set
 - Effort: `xhigh`
 - Approval mode: `danger-full-access`
 
+**Important:** You MUST use `codex exec` (the codex skill) for this agent — do NOT fall back to the Claude Agent tool. The design agent needs write access to create and update `plan.md`, which requires codex with `danger-full-access`. If codex fails to run, stop and report the error to the user instead of substituting a different agent.
+
 Give it the design prompt below. The design agent writes to `plan.md` as a working file during the design process — this is just a scratch space for the agent to iterate on, not the final destination.
 
 ### Design Prompt
