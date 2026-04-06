@@ -54,8 +54,8 @@ git log -1 --format='%H'
 
 Include this SHA in the review prompt below (replace `<LATEST_COMMIT_SHA>`). Spawn **two review agents in parallel**:
 
-1. **Claude reviewer** — use a Claude agent with model `opus 4.6` and effort `x`. Give it the review prompt below.
-2. **Codex reviewer** — use `codex exec` with model `gpt-5.4` and effort `xhigh`. Give it the review prompt below.
+1. **Claude reviewer** — use the Claude `Agent` tool with model `opus` and subagent_type `general-purpose`. Give it the review prompt below.
+2. **Codex reviewer** — you MUST use `codex exec` via the `skill-codex:codex` skill for this reviewer. Do NOT use the Claude Agent tool. Do NOT substitute a second Claude agent. If `codex exec` fails for ANY reason (not installed, crashes, times out, errors, etc.), you MUST stop the entire task and report the error to the user. Do NOT fall back to any other agent, tool, or method. Give it the review prompt below with model `gpt-5.4` and effort `xhigh`.
 
 ### Review Prompt (use for both reviewers)
 
@@ -98,7 +98,7 @@ This step is not optional. The task is incomplete until CI passes.
 ## Important Notes
 
 - Always keep the coding agent's process alive across the full lifecycle.
-- Run the two reviewers in parallel for efficiency.
+- Run the two reviewers in parallel for efficiency. One MUST be a Claude Agent, the other MUST be a Codex agent via `codex exec`. Never use two Claude agents or two Codex agents. If Codex fails, abort — do not substitute.
 - Feed reviews to the coding agent sequentially (one at a time) so fixes don't conflict.
 - Do not let the coding agent skip reviews — it should address each one thoughtfully.
 - The review cycle should converge within 2-4 iterations in most cases. If it goes beyond 5, stop and report to the user.
