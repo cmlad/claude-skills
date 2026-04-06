@@ -41,6 +41,8 @@ Spawn a long-running coding agent using `codex exec` (the codex skill) with the 
 - Effort: `xhigh`
 - Approval mode: `danger-full-access`
 
+**Important:** You MUST use `codex exec` (the codex skill) for this agent — do NOT fall back to the Claude Agent tool. If codex fails to run, stop and report the error to the user instead of substituting a different agent.
+
 Give it the implementation prompt below, embedding the full plan text directly. Keep this process running and respond to any questions it asks until it creates a PR. Once it does, print the PR URL.
 
 ### Implementation Prompt
