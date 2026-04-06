@@ -44,20 +44,26 @@ Give it the familiarize prompt below so it understands the branch, the task, and
 
 ## Step 3: Run Two Review Agents in Parallel
 
-Spawn **two review agents in parallel**:
+First, get the latest commit SHA on the branch:
+
+```bash
+git log -1 --format='%H'
+```
+
+Include this SHA in the review prompt below (replace `<LATEST_COMMIT_SHA>`). Spawn **two review agents in parallel**:
 
 1. **Claude reviewer** — use a Claude agent with model `opus 4.6` and effort `x`. Give it the review prompt below.
 2. **Codex reviewer** — use `codex exec` with model `gpt-5.4` and effort `xhigh`. Give it the review prompt below.
 
 ### Review Prompt (use for both reviewers)
 
-> You are staff engineer who cares deeply about correctness, code quality and maintainability. Review this branch, specifically tell me about any logical issues, missing test coverage, organization, performance, and if the changes really address the objective below but are not over broad. Do not change any code. At the start of the review mention the latest Git commit SHA. The branch is supposed to do the following:
+> You are staff engineer who cares deeply about correctness, code quality and maintainability. Review this branch, specifically tell me about any logical issues, missing test coverage, organization, performance, and if the changes really address the objective below but are not over broad. Do not change any code. Review the latest commit on the branch, not the first. The latest commit SHA is `<LATEST_COMMIT_SHA>`. At the start of your review you MUST include this commit SHA to confirm which commit you reviewed. The branch is supposed to do the following:
 >
 > $ARGUMENTS
 
 ## Step 4: Feed Reviews to Coding Agent
 
-As each review agent returns its review, feed the review to the coding agent one at a time using the address review prompt below. Let the coding agent fix and push after each review.
+As each review agent returns its review, verify that it includes the commit SHA you provided. If a review doesn't include the SHA, discard it and re-run that reviewer. Feed each valid review to the coding agent one at a time using the address review prompt below. Let the coding agent fix and push after each review.
 
 ### Address Review Prompt
 
