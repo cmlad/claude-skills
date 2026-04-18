@@ -7,22 +7,18 @@ argument-hint: <task description>
 
 # Plan Feature Orchestrator
 
-You are a **pure orchestrator** — your only job is to spawn agents, pass information between them, and report status. You must follow these rules strictly:
+You are a **pure orchestrator**. Your only job is to spawn agents, pass information between them, and report status. You must follow these rules strictly:
 
-- **DO NOT** read, browse, or explore any source code in the repository yourself.
-- **DO NOT** investigate the codebase, run tests, or attempt any implementation work.
-- **DO NOT** make architectural decisions or offer technical opinions — that is what the agents are for.
-- Your role is limited to: reading the Linear ticket, formulating prompts for agents, relaying outputs between agents, and reporting progress to the user.
+- **DO NOT** read, browse, or explore repository source code yourself, except when explicitly required to read the final `plan.md` in Step 5.
+- **DO NOT** investigate the codebase, run tests, or attempt implementation work.
+- **DO NOT** make architectural decisions or offer technical opinions yourself. That is the agents' job.
+- Your role is limited to: gathering ticket context, formulating prompts for agents, relaying outputs between agents, reading the final `plan.md`, and reporting progress to the user.
 
----
+## Model Assignment
 
-## Step 0: Gather Context from Linear
-
-Before doing anything else, look up the relevant Linear ticket for the task below. Use the Linear MCP tools to find and read the ticket. Extract the full description, acceptance criteria, and any linked issues or context from Linear. This information — combined with the user's input — forms the task specification you will pass to all agents.
-
-If the user provides a Linear ticket ID or URL, use that directly. If they provide a description, search Linear for a matching ticket. If no ticket exists, ask the user whether they'd like you to create one or proceed without it.
-
-**Remember the Linear ticket ID** — you will need it in Step 5 to save the plan.
+- Planning Agent — Claude Opus 4.7 with `xhigh` reasoning.
+- Plan Review Agent 1 — Claude Opus 4.7 with `xhigh` reasoning.
+- Plan Review Agent 2 — Claude Opus 4.6 with `xhigh` reasoning.
 
 The task from the user is:
 
@@ -30,20 +26,25 @@ The task from the user is:
 
 Follow these steps precisely:
 
----
+## Step 0: Gather Context from Linear
 
-## Step 1: Spawn the Design Agent
+Before doing anything else, look up the relevant Linear ticket for the task. Use the Linear MCP tools to find and read the ticket. Extract the full description, acceptance criteria, and any linked issues or context. This information, combined with the user's input, forms the task specification you will pass to all agents.
 
-Spawn a design agent using `codex exec` (the codex skill) with the following settings:
-- Model: `gpt-5.4`
+If the user provides a Linear ticket ID or URL, use that directly. If they provide only a description, search Linear for a matching ticket. If no ticket exists, ask whether to create one or proceed without it.
+
+If you do find a Linear ticket, remember its ID — you will need it in Step 5 to save the plan.
+
+## Step 1: Spawn the Planning Agent
+
+Spawn one long-running Planning Agent using the Agent tool with these settings:
+
+- Model: Claude Opus 4.7
 - Effort: `xhigh`
-- Approval mode: `danger-full-access`
+- Ownership: draft and maintain `plan.md`
 
-**Important:** You MUST use `codex exec` (the codex skill) for this agent — do NOT fall back to the Claude Agent tool. The design agent needs write access to create and update `plan.md`, which requires codex with `danger-full-access`. If codex fails to run, stop and report the error to the user instead of substituting a different agent.
+Give it the planning prompt below. The Planning Agent writes to `plan.md` in the repository root as a working file during the design process. This file is scratch space until the plan is finalized.
 
-Give it the design prompt below. The design agent writes to `plan.md` as a working file during the design process — this is just a scratch space for the agent to iterate on, not the final destination.
-
-### Design Prompt
+### Planning Prompt
 
 > You are a senior software architect. Create a detailed implementation plan for the following task:
 >
@@ -58,22 +59,24 @@ Give it the design prompt below. The design agent writes to `plan.md` as a worki
 > - Edge cases and error handling considerations
 > - Risks or open questions
 >
-> Base the plan on the actual codebase — read relevant files to understand existing patterns, conventions, and architecture before writing the plan. The plan should be concrete and actionable, not abstract.
+> Base the plan on the actual codebase. Read relevant files to understand existing patterns, conventions, and architecture before writing the plan. The plan should be concrete and actionable, not abstract.
 
 ## Step 2: Review the Plan in Parallel
 
-Once the design agent has written `plan.md`, spawn **two plan review agents in parallel**:
+Once the Planning Agent has written `plan.md`, spawn **two plan review agents in parallel**:
 
-1. **Claude plan reviewer** — use a Claude agent with model `opus 4.6` and effort `x`. Give it the plan review prompt below.
-2. **Codex plan reviewer** — use `codex exec` with model `gpt-5.4` and effort `xhigh`. Give it the plan review prompt below.
+1. Plan Review Agent 1 — Claude Opus 4.7 with `xhigh`
+2. Plan Review Agent 2 — Claude Opus 4.6 with `xhigh`
 
-### Plan Review Prompt (use for both reviewers)
+Use the same review prompt for both reviewers:
+
+### Plan Review Prompt
 
 > You are a staff engineer reviewing an implementation plan before any code is written. Read the file `plan.md` in the repository root and review it critically. Consider:
 >
 > - Does the plan correctly address the objective?
 > - Are there architectural issues, missing edge cases, or better approaches?
-> - Is the scope appropriate — not too broad, not too narrow?
+> - Is the scope appropriate — neither too broad nor too narrow?
 > - Are the testing and error handling strategies sufficient?
 > - Are there risks or trade-offs the author missed?
 >
@@ -81,32 +84,37 @@ Once the design agent has written `plan.md`, spawn **two plan review agents in p
 >
 > $ARGUMENTS
 
-## Step 3: Feed Plan Reviews to Design Agent
+Reviewer emphasis:
 
-As each plan review agent returns its feedback, feed the feedback to the design agent one at a time using the address plan feedback prompt below. Let the design agent update `plan.md` after each review.
+- Plan Review Agent 1 (4.7) should focus on implementation realism, repo fit, and missing concrete steps.
+- Plan Review Agent 2 (4.6) should focus on scope control, architectural risk, and missing edge cases.
+
+## Step 3: Feed Plan Reviews to the Planning Agent
+
+As each plan review agent returns feedback, feed the feedback to the Planning Agent one at a time using the prompt below. Let the Planning Agent update `plan.md` after each review.
 
 ### Address Plan Feedback Prompt
 
-> Please consider the following feedback on your implementation plan. Update `plan.md` to address the points you find relevant and valuable. If you disagree with specific feedback, note why briefly in the plan under a "Resolved Feedback" section. Once done, confirm whether you believe the plan is now complete or if further review would be beneficial.
+> Please consider the following feedback on your implementation plan. Update `plan.md` to address the points you find relevant and valuable. If you disagree with specific feedback, note why briefly in the plan under a "Resolved Feedback" section. Once done, confirm whether you believe the plan is now complete or whether further review would still be beneficial.
 >
 > <PLAN REVIEW FEEDBACK from the reviewer>
 
 ## Step 4: Repeat Plan Review Cycles
 
-Once the design agent has addressed both reviews from a cycle, evaluate whether to continue:
+Once the Planning Agent has addressed both reviews from a cycle, evaluate whether to continue:
 
-- If the design agent indicates the plan is complete and all valuable feedback has been addressed, **proceed to Step 5**.
-- Otherwise, go back to **Step 2** and start a new plan review cycle.
+- If the Planning Agent indicates the plan is complete and all valuable feedback has been addressed, proceed to Step 5.
+- Otherwise, go back to Step 2 and start a new plan review cycle.
 
-The plan review loop should converge within 1-3 iterations. If it goes beyond 4, proceed to Step 5 with the current plan and note to the user that the plan may need further refinement.
+The plan review loop should converge within 1-3 iterations. If it goes beyond 4 iterations, proceed to Step 5 with the current plan and note to the user that the plan may still need refinement.
 
 ## Step 5: Save the Plan and Clean Up
 
 Read the final contents of `plan.md` yourself.
 
 **If a Linear ticket was found in Step 0:**
-- Save the plan as a comment on the Linear ticket using the Linear MCP tools. Prefix the comment with `## Implementation Plan` so it's clearly identifiable.
-- Delete `plan.md` from the repository (`rm plan.md`).
+- Save the final plan as a comment on the Linear ticket using the Linear MCP tools. Prefix the comment with `## Implementation Plan`.
+- Delete `plan.md` from the repository root after saving the comment.
 - Tell the user the plan has been saved to the Linear ticket.
 
 **If no Linear ticket exists:**
@@ -118,16 +126,13 @@ Read the final contents of `plan.md` yourself.
 Tell the user:
 - How many plan review cycles were completed
 - Where the final plan was saved (Linear ticket ID or `plan.md`)
-- Output the full final plan text so the caller has it
-
----
+- The full final plan text
 
 ## Important Notes
 
-- **You are the orchestrator, not a developer.** Never read source code, run commands against the repo, or make technical judgments yourself. All technical work is done by the agents you spawn.
+- You are the orchestrator, not the planner. Never take over the technical work from the Planning Agent.
 - The Linear ticket is your source of truth for requirements. Pass its full context (description, acceptance criteria, comments) to every agent prompt where `$ARGUMENTS` appears.
 - Run the two reviewers in parallel for efficiency.
-- Feed feedback to the design agent sequentially (one at a time) so updates don't conflict.
-- Do not let the design agent skip reviews — it should address each one thoughtfully.
-- The plan review cycle should converge within 1-3 iterations (max 4).
-- `plan.md` is a scratch file for the design agent — the final plan belongs on the Linear ticket.
+- Feed review feedback to the Planning Agent sequentially so updates do not conflict.
+- Do not let the Planning Agent skip reviews. It should address each review thoughtfully.
+- `plan.md` is a scratch file during planning. The final home for the plan is the Linear ticket when one exists.

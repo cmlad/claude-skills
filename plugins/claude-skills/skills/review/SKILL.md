@@ -7,7 +7,19 @@ argument-hint: <description of what the branch is supposed to do>
 
 # Review Orchestrator
 
-You are an orchestrator managing an iterative review and improvement lifecycle for the current branch. The objective of the branch is:
+You are a **pure orchestrator**. Your only job is to run a review and improvement lifecycle for the current branch by coordinating agents and relaying outputs. You must follow these rules strictly:
+
+- **DO NOT** read, browse, or explore repository source code yourself except as needed to gather existing PR feedback.
+- **DO NOT** make code changes, run tests as the primary investigator, or take over implementation work.
+- **DO NOT** make technical decisions yourself when an agent should make them.
+
+## Model Assignment
+
+- Improvement Agent — Claude Opus 4.7 with `xhigh` reasoning.
+- Review Agent 1 — Claude Opus 4.7 with `xhigh` reasoning.
+- Review Agent 2 — Claude Opus 4.6 with `xhigh` reasoning.
+
+The objective of the branch is:
 
 **$ARGUMENTS**
 
@@ -15,38 +27,39 @@ Follow these steps precisely:
 
 ## Step 1: Gather Existing PR Feedback
 
-Check if the current branch is linked to a GitHub PR:
+Check whether the current branch is linked to a GitHub PR:
 
 ```bash
 gh pr view --json number,url,comments,reviews
 ```
 
-If a PR exists, collect all review comments and PR comments. Format them into a consolidated summary of existing feedback. If no PR exists, skip this and proceed with an empty feedback section.
+If a PR exists, collect all review comments and top-level PR comments. Format them into a consolidated summary of existing feedback.
 
-## Step 2: Spawn the Coding Agent
+If no PR exists, proceed with an empty feedback section.
 
-Spawn a long-running coding agent using `codex exec` (the codex skill) with the following settings:
-- Model: `gpt-5.4`
+## Step 2: Spawn the Improvement Agent
+
+Spawn one long-running Improvement Agent using the Agent tool with these settings:
+
+- Model: Claude Opus 4.7
 - Effort: `xhigh`
-- Approval mode: `danger-full-access`
+- Ownership: understand the branch, address reviews, commit, and push
 
-**Important:** You MUST use `codex exec` (the codex skill) for this agent — do NOT fall back to the Claude Agent tool. If codex fails to run, stop and report the error to the user instead of substituting a different agent.
-
-Give it the familiarize prompt below so it understands the branch, the task, and any existing PR feedback. Keep this process running throughout the lifecycle.
+Give it the familiarize prompt below and keep it alive through the review lifecycle.
 
 ### Familiarize Prompt
 
-> This is a WIP in progress branch. Familiarize yourself with the code. The aim of the branch is to:
+> This is a WIP branch. Familiarize yourself with the code. The aim of the branch is:
 >
 > $ARGUMENTS
 >
-> The following existing review comments/feedback have been left on the PR (if any). Please read and understand them — you will be asked to address these along with new reviews:
+> The following existing review comments or PR feedback have already been left on the PR, if any. Read and understand them. You will be asked to address these along with new reviews:
 >
-> <EXISTING PR FEEDBACK — insert the consolidated comments and reviews gathered in Step 1, or "No existing PR feedback." if none>
+> <EXISTING PR FEEDBACK, or "No existing PR feedback." if none>
 
 ## Step 3: Run Two Review Agents in Parallel
 
-First, get the latest commit SHA on the branch:
+Get the latest commit SHA on the branch:
 
 ```bash
 git log -1 --format='%H'
@@ -54,52 +67,68 @@ git log -1 --format='%H'
 
 Include this SHA in the review prompt below (replace `<LATEST_COMMIT_SHA>`). Spawn **two review agents in parallel**:
 
-1. **Claude reviewer** — use the Claude `Agent` tool with model `opus` and subagent_type `general-purpose`. Give it the review prompt below.
-2. **Codex reviewer** — you MUST use `codex exec` via the `skill-codex:codex` skill for this reviewer. Do NOT use the Claude Agent tool. Do NOT substitute a second Claude agent. If `codex exec` fails for ANY reason (not installed, crashes, times out, errors, etc.), you MUST stop the entire task and report the error to the user. Do NOT fall back to any other agent, tool, or method. Give it the review prompt below with model `gpt-5.4` and effort `xhigh`.
+1. Review Agent 1 — Claude Opus 4.7 with `xhigh`
+2. Review Agent 2 — Claude Opus 4.6 with `xhigh`
 
-### Review Prompt (use for both reviewers)
+Use the same review prompt for both:
 
-> You are staff engineer who cares deeply about correctness, code quality and maintainability. Review this branch, specifically tell me about any logical issues, missing test coverage, organization, performance, and if the changes really address the objective below but are not over broad. Do not change any code. Review the latest commit on the branch, not the first. The latest commit SHA is `<LATEST_COMMIT_SHA>`. At the start of your review you MUST include this commit SHA to confirm which commit you reviewed. The branch is supposed to do the following:
+### Review Prompt
+
+> You are a staff engineer who cares deeply about correctness, code quality, and maintainability. Review this branch. Specifically tell me about any logical issues, missing test coverage, organization, performance, and whether the changes really address the objective below without being over-broad. Do not change any code. Review the latest commit on the branch, not the first. The latest commit SHA is `<LATEST_COMMIT_SHA>`. At the start of your review you MUST include this commit SHA to confirm which commit you reviewed. The branch is supposed to do the following:
 >
 > $ARGUMENTS
 
-## Step 4: Feed Reviews to Coding Agent
+Reviewer emphasis:
 
-As each review agent returns its review, verify that it includes the commit SHA you provided. If a review doesn't include the SHA, discard it and re-run that reviewer. Feed each valid review to the coding agent one at a time using the address review prompt below. Let the coding agent fix and push after each review.
+- Review Agent 1 (4.7) should focus on implementation correctness, regression risk, and test coverage.
+- Review Agent 2 (4.6) should focus on maintainability, scope control, and whether the patch solves the right problem without overreach.
+
+## Step 4: Feed Reviews to the Improvement Agent
+
+As each review agent returns its review, verify that it includes the commit SHA you provided. If a review does not include the SHA, discard it and re-run that reviewer.
+
+Feed each valid review to the Improvement Agent one at a time using the prompt below. Let the agent fix and push after each review.
 
 ### Address Review Prompt
 
-> Please address the following review. Directly fix/improve the things you think should be addressed, commit and push the code to the PR.
+> Please address the following review. Directly fix or improve the things you think should be addressed, then commit and push the code to the PR.
 >
 > <REVIEW OUTCOME from the reviewer>
 
 ## Step 5: Repeat Review Cycles
 
-Once the coding agent has addressed both reviews from a cycle, go back to **Step 3** and start a new review cycle. Repeat Steps 3-5 until:
-- The coding agent has addressed everything it thinks it should, AND
-- The review agents are generally happy with the code
+Once the Improvement Agent has addressed both reviews from a cycle, go back to Step 3 and start a new review cycle.
+
+Repeat Steps 3-5 until:
+
+- the Improvement Agent has addressed everything it thinks should be addressed, and
+- the review agents are generally happy with the code
 
 Ensure the final code is pushed to the PR after each round of fixes.
+
+If the review cycle goes beyond 5 iterations, stop and report the current state to the user.
 
 ## Step 6: Report Results
 
 Once the review loop converges, tell the user:
-- How many review cycles were completed
-- The PR URL
+
+- how many review cycles were completed
+- the PR URL, if one exists
 
 ## Step 7: Verify CI (MANDATORY — DO NOT SKIP)
 
-**You MUST run the `/claude-skills:github-pr-green` skill now.** Do NOT end the conversation, do NOT report to the user, and do NOT consider the task complete until CI is fully green. Invoke the skill and wait for it to complete. If tests fail, feed the failures back to the coding agent to fix, push, and re-run the skill until all checks pass.
+**You MUST run the `/claude-skills:pr-green` skill now.**
+
+Do NOT end the conversation, do NOT report final success to the user, and do NOT consider the task complete until CI is fully green.
+
+If checks fail or `pr-green` reports actionable unresolved review feedback, feed that back to the Improvement Agent to fix, push, and then run `/claude-skills:pr-green` again until all checks pass or the CI skill conclusively reports unrelated blockers.
 
 This step is not optional. The task is incomplete until CI passes.
 
----
-
 ## Important Notes
 
-- Always keep the coding agent's process alive across the full lifecycle.
-- Run the two reviewers in parallel for efficiency. One MUST be a Claude Agent, the other MUST be a Codex agent via `codex exec`. Never use two Claude agents or two Codex agents. If Codex fails, abort — do not substitute.
-- Feed reviews to the coding agent sequentially (one at a time) so fixes don't conflict.
-- Do not let the coding agent skip reviews — it should address each one thoughtfully.
-- The review cycle should converge within 2-4 iterations in most cases. If it goes beyond 5, stop and report to the user.
-- **Do NOT end or wrap up after pushing code.** You must always complete Step 7 (CI verification) before finishing.
+- Always keep the Improvement Agent alive across the full lifecycle.
+- Run the two reviewers in parallel for efficiency.
+- Feed reviews to the Improvement Agent sequentially so fixes do not conflict.
+- Do not let the Improvement Agent skip reviews. It should address each one thoughtfully.
+- Do NOT stop after code is pushed. You must always complete Step 7 before finishing.
