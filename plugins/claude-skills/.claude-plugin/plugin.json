@@ -1,5 +1,5 @@
 {
   "name": "claude-skills",
   "description": "Shared Claude Code skills for feature development, code review, and CI monitoring",
-  "version": "1.7.0"
+  "version": "1.8.0"
 }

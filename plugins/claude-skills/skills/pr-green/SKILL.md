@@ -94,6 +94,25 @@ EOF
 
 Keep the comment concrete: reference the specific review threads or check failures the push addresses, and briefly describe the change. If the push addresses nothing reviewer-visible (e.g. a pure flake retry), skip the comment.
 
+## Always Update The PR Description After Pushing Code
+
+After every push you make in this skill, you MUST also update the PR description so it stays in sync with what the branch actually does. Review cycles and CI fixes routinely extend a PR beyond what the original description covered — do not let the description go stale.
+
+Fetch the current description, then edit it to reflect the current branch state:
+
+```bash
+gh pr view <number> --json body --jq '.body'
+gh pr edit <number> --body "$(cat <<'EOF'
+<updated summary reflecting the current branch state>
+
+## Test plan
+- <checklist>
+EOF
+)"
+```
+
+Update the summary, scope notes, and test plan as needed. Preserve anything the author wrote that is still accurate (context, linked issues, screenshots) — only rewrite the parts that no longer match the code. Skip the update only for pure flake retries where nothing on the branch changed.
+
 ## Step 3: Wait For All Checks To Complete
 
 You MUST actively poll until every single check has reached a terminal state (success, failure, or cancelled). No check may be left in pending/queued/in_progress state.

@@ -52,6 +52,8 @@ Keep this agent alive through the full lifecycle. Give it the implementation pro
 
 > Implement the following plan. Read it carefully and follow it closely. Create or update a PR when the implementation is complete.
 >
+> After every push to the PR — the initial push that creates it and every subsequent push — you MUST update the PR description with `gh pr edit <number> --body ...` so it accurately reflects the current state of the branch (what the PR does, any notable scope changes since the last push, and the current test plan). PR descriptions drift out of sync with the code as review cycles add fixes; keeping it current is part of your job, not optional.
+>
 > The high-level objective is:
 >
 > $ARGUMENTS
@@ -94,7 +96,7 @@ Feed each valid review to the Implementation Agent one at a time using the promp
 
 ### Address Review Prompt
 
-> Please address the following review. Directly fix or improve the things you think should be addressed, then commit and push the code to the PR.
+> Please address the following review. Directly fix or improve the things you think should be addressed, then commit and push the code to the PR. After pushing, update the PR description with `gh pr edit` so it reflects the current state of the branch — do not leave stale "what this PR does" text from an earlier iteration.
 >
 > <REVIEW OUTCOME from the reviewer>
 
